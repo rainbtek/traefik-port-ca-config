@@ -1,0 +1,61 @@
+version: '3'
+services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - my-net
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      - CF_API_EMAIL=admin@example.com
+        # Global API Key
+      - CF_API_KEY=${GLOBAL_API_KEY}
+      - LEGO_CA_CERTIFICATES=/usr/local/share/ca-certificates/step_intermediate_ca.crt
+      - LEGO_CA_SERVER_NAME=ca.local.mydomain.com
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data/traefik.yml:/traefik.yml:ro
+      - ./data/acme.json:/acme.json
+      - ./config.yml:/config.yml:ro
+      - ./data/step-ca/certs/intermediate_ca.crt:/usr/local/share/ca-certificates/step_intermediate_ca.crt
+        #    command:
+        #      - "--certificatesResolvers.myresolver.acme.tlsChallenge=true"
+        #      - "--certificatesResolvers.myresolver.acme.email=admin@example.com"
+        #      - "--certificatesResolvers.myresolver.acme.storage=/etc/acme/acme.json"
+        #      - "--certificatesresolvers.myresolver.acme.caserver=https://ca.local.mydomain.com:9000/acme/acme/directory"
+        #      - "--certificatesResolvers.myresolver.acme.httpChallenge=true"
+        #      - "--certificatesResolvers.myresolver.acme.httpChallenge.entryPoint=web"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=http"
+      - "traefik.http.routers.traefik.rule=Host(`traefik-dashboard.local.mydomain.com`)"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=traefik:$$ay$$08$$somevalwithescapeddollarsigns"
+      - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
+      - "traefik.http.routers.traefik-secure.entrypoints=https"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik-dashboard.local.mydomain.com`)"
+      - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
+      - "traefik.http.routers.traefik-secure.tls=true"
+        #- "traefik.http.routers.traefik-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=step-ca"
+      - "traefik.http.routers.traefik-secure.tls.domains[0].main=traefik-dashboard.local.mydomain.com"
+      - "traefik.http.routers.traefik-secure.tls.domains[1].main=portainer.local.mydomain.com"
+      - "traefik.http.routers.traefik-secure.tls.domains[2].main=service1.local.mydomain.com"
+      - "traefik.http.routers.traefik-secure.tls.domains[4].main=ca.local.mydomain.com"
+      - "traefik.http.routers.traefik-secure.tls.domains[5].main=pve1.local.mydomain.com"
+
+        #- "traefik.http.routers.traefik-secure.tls.domains[0].main=local.mydomain.com"
+        #- "traefik.http.routers.traefik-secure.tls.domains[0].sans=portainer.local.mydomain.com,192.168.10.2"
+        #- "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.local.mydomain.com"
+      - "traefik.http.routers.traefik-secure.service=api@internal"
+
+networks:
+  my-net:
+    external: true

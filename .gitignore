@@ -1,0 +1,6 @@
+.env
+portainer
+*.crt
+*.key
+data/acme.json
+data/step-ca/certs
