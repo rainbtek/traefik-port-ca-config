@@ -30,7 +30,7 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.10.5:80"
-          passHostHeader: true
+        passHostHeader: true
 
         
 
